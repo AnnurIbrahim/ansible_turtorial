@@ -4,36 +4,51 @@
   become: true
   tasks:
 
-  - name: update repository index
-    apt:
-      update_cache: yes
-    when: ansible_distribution_version == "Ubuntu"
 
-  - name: install apache2 package 
+  - name: install apache and php
+    package:
+      name:
+        - "{{apache_package}}"
+        - "{{php_package}}"
+      state: latest
+      update_cache: yes
+ 
+- hosts: web_servers
+  become: true
+  tasks:
+
+  - name: install apache package (Arch Linux)
+    tags: apache,arch,apache
+    pacman:
+      name:
+        - apache
+        - php
+      state: latest
+    when: ansible_distribution == "Archlinux"
+
+  - name: install apache2 package (Ubuntu)
+    tags: apache,apache2,ubuntu
     apt:
-      name: apache2
+      name:
+        - apache2
+        - libapache2-mod-php
       state: latest
     when: ansible_distribution == "Ubuntu"
 
-  - name: add php support for apache 
-    apt:
-      name: libapache2-mod-php
-      state: latest
-    when: ansible_distribution == "Ubuntu"
+  - name: create web root directory for Arch Linux
+    file:
+      path: /var/www/html
+      state: directory
+      owner: root
+      group: root
+      mode: 0755
+    when: ansible_distribution == "Archlinux"
 
-  - name: update repository index for almalinux
-    dnf:
-      update_cache: yes
-    when: ansible_distribution_version == "almalinux"
-
-  - name: install apache2 package for almalinux
-    dnf:
-      name: httpd
-      state: latest
-    when: ansible_distribution == "almalinux"
-
-  - name: add php support for apache for almalinux
-    dnf:
-      name: php
-      state: latest
-    when: ansible_distribution == "almalinux"
+  - name: copy html file
+    tags: apache,apache,apache2,httpd
+    copy:
+      src: default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644
